@@ -32,11 +32,11 @@ def parse_cue(cue_file, outdir):
     """
     cue_dir = os.path.dirname(cue_file)
     d = open(cue_file).read().splitlines()
-    
+
     general = {}
     tracks = []
     current_file = None
-    
+
     for line in d:
         if line.startswith('REM GENRE '):
             general['genre'] = ' '.join(line.split(' ')[2:]).replace('"', '')
@@ -48,13 +48,13 @@ def parse_cue(cue_file, outdir):
             general['album'] = ' '.join(line.split(' ')[1:]).replace('"', '')
         if line.startswith('FILE '):
             current_file = ' '.join(line.split(' ')[1:-1]).replace('"', '')
-        
+
         if line.startswith('  TRACK '):
             track = general.copy()
             track['track'] = int(line.strip().split(' ')[1], 10)
-    
+
             tracks.append(track)
-    
+
         if line.startswith('    TITLE '):
             tracks[-1]['title'] = ' '.join(line.strip().split(' ')[1:]).replace('"', '')
         if line.startswith('    PERFORMER '):
@@ -63,11 +63,11 @@ def parse_cue(cue_file, outdir):
             #t = map(int, ' '.join(line.strip().split(' ')[2:]).replace('"', '').split(':'))
             t = [int(a) for a in ' '.join(line.strip().split(' ')[2:]).replace('"', '').split(':')]
             tracks[-1]['start'] = 60 * t[0] + t[1] + t[2] / 100.0
-    
+
     for i in range(len(tracks)):
         if i != len(tracks) - 1:
             tracks[i]['duration'] = tracks[i + 1]['start'] - tracks[i]['start']
-    
+
     cmds = []
     for track in tracks:
         metadata = {
@@ -76,25 +76,25 @@ def parse_cue(cue_file, outdir):
             'album': track['album'],
             'track': str(track['track']) + '/' + str(len(tracks))
         }
-    
+
         if 'genre' in track:
             metadata['genre'] = track['genre']
         if 'date' in track:
             metadata['date'] = track['date']
-    
+
         cmd = ffmpeg_path
-        cmd += ' -i "%s"' % os.path.join(cue_dir,current_file)
+        cmd += ' -i "%s"' % os.path.join(cue_dir, current_file)
         cmd += ' -ss %.2d:%.2d:%.2d' % (track['start'] / 60 / 60, track['start'] / 60 % 60, int(track['start'] % 60))
-    
+
         if 'duration' in track:
             cmd += ' -t %.2d:%.2d:%.2d' % (track['duration'] / 60 / 60, track['duration'] / 60 % 60, int(track['duration'] % 60))
-    
+
         cmd += ' ' + ' '.join('-metadata %s="%s"' % (k, v) for (k, v) in metadata.items())
         filename = '%s-%s-%.2d.mp3' % (track['artist'].replace(":", "-"),
                                        track['title'].replace(":", "-"),
                                        track['track'])
         cmd += ' "%s"' % os.path.join(outdir, filename)
-    
+
         cmds.append(cmd)
 
     return cmds
